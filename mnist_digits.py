@@ -2,7 +2,10 @@ import read_idx
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import classification_report
 
 class TwoLayerNN(nn.Module):
     """
@@ -71,8 +74,8 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
     # --------------- TRAINING ---------------
     # read training data
-    train_data, train_data_dims = read_idx.read(trainingdataf, 50)
-    train_labels, train_label_dims = read_idx.read(traininglabelf, 50)
+    train_data, train_data_dims = read_idx.read(trainingdataf, 500)
+    train_labels, train_label_dims = read_idx.read(traininglabelf, 500)
 
     # convert tensors to the appropriate data types, also shape and normalize images data
     train_data = torch.tensor(train_data, dtype=torch.float)
@@ -92,9 +95,9 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     lab3.show_image(twos[0], scale=lab3.SCALE_01)
     '''
     # NOTE FOR LAB: 30 neurons work very well
-    model = TwoLayerNN(28*28, 30, 10, nn.ReLU())
-    # NOTE FOR LAB: 1e-2 works better than 1e-2
-    optimizer = optim.Adam(model.parameters(), lr=1e-2)
+    model = TwoLayerNN(28*28, 50, 10, nn.ReLU())
+    # NOTE FOR LAB: 1e-3 works better than 1e-2 and 1e-2
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = nn.CrossEntropyLoss()
     print("\nmodel: %s" % model)
 
@@ -103,13 +106,13 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     train_predictions = train_y_pred.max(1).indices
 
     print("\ntrain_y_pred (%s): %s ..." % (train_y_pred.size(), train_y_pred[:10, :]))
-    print("\ntrain_labels (%s): %s" % (len(train_labels), train_labels))
-    print("train_predic (%s): %s" % (len(train_predictions), train_predictions))
+    print("\ntrain_labels (%s): %s ..." % (len(train_labels), train_labels[:100]))
+    print("train_predic (%s): %s ..." % (len(train_predictions), train_predictions[:100]))
 
     # --------------- VALIDATION ---------------
     # read test data
-    test_data, test_data_dims = read_idx.read(testdataf, 50)
-    test_labels, test_label_dims = read_idx.read(testlabelf, 50)
+    test_data, test_data_dims = read_idx.read(testdataf, 500)
+    test_labels, test_label_dims = read_idx.read(testlabelf, 500)
 
     # convert tensors to the appropriate data types, also shape and normalize images data
     test_data = torch.tensor(test_data, dtype=torch.float)
@@ -126,8 +129,20 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     test_predictions = test_y_pred.max(1).indices
 
     print("\ntest_y_pred (%s): %s ..." % (test_y_pred.size(), test_y_pred[:10, :]))
-    print("\ntest_labels (%s): %s" % (len(test_labels), test_labels))
-    print("test_predic (%s): %s" % (len(test_predictions), test_predictions))
+    print("\ntest_labels (%s): %s ..." % (len(test_labels), test_labels[:100]))
+    print("test_predic (%s): %s ..." % (len(test_predictions), test_predictions[:100]))
+
+    conf_matrix = confusion_matrix(test_labels, test_predictions, labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    print("\nconf_matrix (%s): \n%s" % (len(conf_matrix), conf_matrix))
+
+    precision = precision_score(test_labels, test_predictions, average=None)
+    print("\nprecision (%s): \n%s" % (len(precision), precision))
+
+    recall = recall_score(test_labels, test_predictions, average=None)
+    print("\nrecall (%s): \n%s" % (len(recall), recall))
+
+    clasif_report = classification_report(test_labels, test_predictions)
+    print("\nclasif_report (%s): \n%s" % (len(clasif_report), clasif_report))
 
 
 if __name__ == "__main__":
