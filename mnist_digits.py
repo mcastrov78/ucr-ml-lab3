@@ -7,6 +7,7 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import classification_report
 
+
 class TwoLayerNN(nn.Module):
     """
     Two Layer Neural Network.
@@ -70,38 +71,33 @@ def train_nn(iterations, nn_model, optimizer, nn_loss_fn, tensor_x, tensor_y, in
             print("N: %s\t | Loss: %f\t" % (it, loss_output))
 
 
-def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
-         testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
-    # --------------- TRAINING ---------------
-    # read training data
-    train_data, train_data_dims = read_idx.read(trainingdataf, 500)
-    train_labels, train_label_dims = read_idx.read(traininglabelf, 500)
+def get_images_and_labels_tensors(images_filename, labels_filename):
+    images_tensor, images_data_dims = read_idx.read(images_filename, 500)
+    labels_tensor, labels_data_dims = read_idx.read(labels_filename, 500)
 
     # convert tensors to the appropriate data types, also shape and normalize images data
-    train_data = torch.tensor(train_data, dtype=torch.float)
-    train_data = train_data.view((-1, 28 * 28))
-    train_data /= 255
-    print("train_data (%s): %s" % (train_data.size(), train_data))
+    images_tensor = torch.tensor(images_tensor, dtype=torch.float)
+    images_tensor = images_tensor.view((-1, 28 * 28))
+    images_tensor /= 255
 
-    train_labels = torch.tensor(train_labels).long()
-    print("train_labels (%s): %s" % (train_labels.size(), train_labels))
+    print("images_tensor (%s): %s" % (images_tensor.size(), images_tensor))
+    labels_tensor = torch.tensor(labels_tensor).long()
+    print("labels_tensor (%s): %s" % (labels_tensor.size(), labels_tensor))
 
-    '''
-    # Filter training data by label: train_labels == 2 will return a tensor with True/False depending on the label for each sample
-    # this True/False tensor can be used to index train_data, returning only the ones for which the condition was True
-    twos = train_data[train_labels == 2]
-    print("twos (%s): %s" % (twos.size(), twos))
-    # show the first "2" on the screen
-    lab3.show_image(twos[0], scale=lab3.SCALE_01)
-    '''
-    # NOTE FOR LAB: 30 neurons work very well
-    model = TwoLayerNN(28*28, 50, 10, nn.ReLU())
+    return images_tensor, labels_tensor
+
+
+def train(trainingdataf, traininglabelf, model):
+    print("\n--------------- TRAINING - --------------\n")
+    # read training data
+    train_data, train_labels = get_images_and_labels_tensors(trainingdataf, traininglabelf)
+
     # NOTE FOR LAB: 1e-3 works better than 1e-2 and 1e-2
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = nn.CrossEntropyLoss()
     print("\nmodel: %s" % model)
 
-    train_nn(1000, model, optimizer, loss_fn, train_data, train_labels, 28*28, 10)
+    train_nn(1000, model, optimizer, loss_fn, train_data, train_labels, 28 * 28, 10)
     train_y_pred = model(train_data)
     train_predictions = train_y_pred.max(1).indices
 
@@ -109,30 +105,11 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     print("\ntrain_labels (%s): %s ..." % (len(train_labels), train_labels[:100]))
     print("train_predic (%s): %s ..." % (len(train_predictions), train_predictions[:100]))
 
-    # --------------- VALIDATION ---------------
-    # read test data
-    test_data, test_data_dims = read_idx.read(testdataf, 500)
-    test_labels, test_label_dims = read_idx.read(testlabelf, 500)
+    return model
 
-    # convert tensors to the appropriate data types, also shape and normalize images data
-    test_data = torch.tensor(test_data, dtype=torch.float)
-    test_data = test_data.view((-1, 28 * 28))
-    # normalize training data
-    test_data /= 255
-    print("'\ntest_data (%s): %s" % (test_data.size(), test_data))
 
-    test_labels = torch.tensor(test_labels).long()
-    print("test_labels (%s): %s" % (test_labels.size(), test_labels))
-
-    # predict test labels using trained model
-    test_y_pred = model(test_data)
-    test_predictions = test_y_pred.max(1).indices
-
-    print("\ntest_y_pred (%s): %s ..." % (test_y_pred.size(), test_y_pred[:10, :]))
-    print("\ntest_labels (%s): %s ..." % (len(test_labels), test_labels[:100]))
-    print("test_predic (%s): %s ..." % (len(test_predictions), test_predictions[:100]))
-
-    conf_matrix = confusion_matrix(test_labels, test_predictions, labels=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+def generate_classification_report(test_labels, test_predictions):
+    conf_matrix = confusion_matrix(test_labels, test_predictions)
     print("\nconf_matrix (%s): \n%s" % (len(conf_matrix), conf_matrix))
 
     precision = precision_score(test_labels, test_predictions, average=None)
@@ -145,5 +122,31 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     print("\nclasif_report (%s): \n%s" % (len(clasif_report), clasif_report))
 
 
+def validate(testdataf, testlabelf, model):
+    print("\n--------------- VALIDATION - --------------\n")
+    # read test data
+    test_data, test_labels = get_images_and_labels_tensors(testdataf, testlabelf)
+
+    # predict test labels using trained model
+    test_y_pred = model(test_data)
+    test_predictions = test_y_pred.max(1).indices
+
+    print("\ntest_y_pred (%s): %s ..." % (test_y_pred.size(), test_y_pred[:10, :]))
+    print("\ntest_labels (%s): %s ..." % (len(test_labels), test_labels[:100]))
+    print("test_predic (%s): %s ..." % (len(test_predictions), test_predictions[:100]))
+
+    generate_classification_report(test_labels, test_predictions)
+
+
+def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
+         testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
+
+    # --------------- TRAINING - --------------
+    # NOTE FOR LAB: 30 neurons work very well
+    model = TwoLayerNN(28 * 28, 50, 10, nn.ReLU())
+    train(trainingdataf, traininglabelf, model)
+    validate(testdataf, testlabelf, model)
+
+    
 if __name__ == "__main__":
     main()
