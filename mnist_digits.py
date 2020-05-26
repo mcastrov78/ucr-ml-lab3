@@ -8,6 +8,9 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import classification_report
 
+# None to process all images
+NUMBER_OF_IMAGES_TO_PROCESS = 500
+
 
 class TwoLayerNN(nn.Module):
     """
@@ -72,8 +75,8 @@ def train_nn(iterations, nn_model, optimizer, nn_loss_fn, tensor_x, tensor_y, in
 
 
 def get_images_and_labels_tensors(images_filename, labels_filename):
-    images_tensor, images_data_dims = read_idx.read(images_filename, 500)
-    labels_tensor, labels_data_dims = read_idx.read(labels_filename, 500)
+    images_tensor, images_data_dims = read_idx.read(images_filename, NUMBER_OF_IMAGES_TO_PROCESS)
+    labels_tensor, labels_data_dims = read_idx.read(labels_filename, NUMBER_OF_IMAGES_TO_PROCESS)
 
     # convert tensors to the appropriate data types, also shape and normalize images data
     images_tensor = torch.tensor(images_tensor, dtype=torch.float)
@@ -85,6 +88,13 @@ def get_images_and_labels_tensors(images_filename, labels_filename):
     #print("labels_tensor (%s): %s" % (labels_tensor.size(), labels_tensor))
 
     return images_tensor, labels_tensor
+
+
+def print_digit(image_tensor, label):
+    print("\nlabel: %s" % (label))
+    this_image_tensor = (image_tensor * 255).type(torch.int)
+    print("data: %s" % (this_image_tensor.view(28, 28)))
+    lab3.show_image(this_image_tensor, "sample_images\{}.png".format(label), scale=lab3.SCALE_OFF)
 
 
 def train(trainingdataf, traininglabelf, model, learning_rate):
@@ -100,11 +110,15 @@ def train(trainingdataf, traininglabelf, model, learning_rate):
     train_y_pred = model(train_data)
     train_predictions = train_y_pred.max(1).indices
 
+    # print sample image tensors data along with its label and the image itself
+    for i in range(3):
+        print_digit(train_data[i], train_labels[i])
+
     #print("\ntrain_y_pred (%s): %s ..." % (train_y_pred.size(), train_y_pred[:10, :]))
     print("\ntrain_labels (%s): %s ..." % (len(train_labels), train_labels[:100]))
     print("train_predic (%s): %s ..." % (len(train_predictions), train_predictions[:100]))
 
-    return model
+    return train_data, train_labels
 
 
 def generate_classification_report(test_labels, test_predictions):
@@ -136,9 +150,28 @@ def validate(testdataf, testlabelf, model):
 
     generate_classification_report(test_labels, test_predictions)
 
+    return test_data, test_labels
+
+
+def analyze_weights(model):
+    print("model: %s" % model)
+    named_parameters = model.named_parameters()
+    print("\nNAMED PARAMETERS: %s" % named_parameters)
+    for name, param, in named_parameters:
+        print("\nname: %s" % name)
+        print("tensor(%s): %s" % (param.size(), param.data))
+        if name == "hidden_linear.weight":
+            for i in range(param.size()[0]):
+                this_image_tensor = (param.data[i] * 255).type(torch.int)
+                #print("\ndata(%s): %s" % (i, this_image_tensor.view(28, 28)))
+                lab3.show_image(this_image_tensor, "neuron_weight_images/{}.png".format(i), scale=lab3.SCALE_OFF)
+
 
 def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
+
+    # we want to see tensor rows in a single line
+    torch.set_printoptions(linewidth=300)
 
     # --------------- TRAINING ---------------
     # NOTE FOR LAB: 50 neurons works the best. More than that doesn't really improve.
@@ -147,19 +180,12 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     train(trainingdataf, traininglabelf, model, 1e-3)
     validate(testdataf, testlabelf, model)
 
-    print("model: %s" % model)
-    print("\nPARAMETERS")
-    for name, param, in model.named_parameters():
-        print("\nname: %s" % name)
-        print("tensor(%s): %s" % (param.size(), param.data))
-        if name == "hidden_linear.weight":
-            lab3.show_image(param.data[0], scale=lab3.SCALE_01)
-
     # --------------- TRAINING ---------------
-    # NOTE FOR LAB: 30 neurons work very well
-    #model = TwoLayerNN(28 * 28, 50, 10, nn.ReLU())
-    #train(trainingdataf, traininglabelf, model, 1e-3)
-    #validate(testdataf, testlabelf, model)
+    model = TwoLayerNN(28 * 28, 50, 10, nn.ReLU())
+    train(trainingdataf, traininglabelf, model, 1e-3)
+    validate(testdataf, testlabelf, model)
+
+    analyze_weights(model)
 
 
 if __name__ == "__main__":
