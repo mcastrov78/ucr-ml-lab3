@@ -8,7 +8,7 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import classification_report
 
-# None to process all images
+# use None to process all images
 NUMBER_OF_IMAGES_TO_PROCESS = 500
 
 
@@ -75,6 +75,12 @@ def train_nn(iterations, nn_model, optimizer, nn_loss_fn, tensor_x, tensor_y, in
 
 
 def get_images_and_labels_tensors(images_filename, labels_filename):
+    """
+    Creates tensors for images and labels data.
+    :param images_filename: images filename
+    :param labels_filename: labels filename
+    :return: tensors for images and labels data
+    """
     images_tensor, images_data_dims = read_idx.read(images_filename, NUMBER_OF_IMAGES_TO_PROCESS)
     labels_tensor, labels_data_dims = read_idx.read(labels_filename, NUMBER_OF_IMAGES_TO_PROCESS)
 
@@ -91,13 +97,27 @@ def get_images_and_labels_tensors(images_filename, labels_filename):
 
 
 def print_digit(image_tensor, label):
-    print("\nlabel: %s" % (label))
+    """
+    Prints the data in the image tensor and its label.
+    :param image_tensor: image tensor
+    :param label: true label
+    :return: nothing
+    """
+    print("\nlabel: %s" % label)
     this_image_tensor = (image_tensor * 255).type(torch.int)
     print("data: %s" % (this_image_tensor.view(28, 28)))
     lab3.show_image(this_image_tensor, "sample_images\{}.png".format(label), scale=lab3.SCALE_OFF)
 
 
 def train(trainingdataf, traininglabelf, model, learning_rate):
+    """
+    Macro training phase to be reused with different models and learning rates.
+    :param trainingdataf: training images filename
+    :param traininglabelf: training labels filename
+    :param model: model to be trained
+    :param learning_rate: learning rate
+    :return: tensors for training images and labels data
+    """
     print("\n--------------- TRAINING - --------------")
     # read training data
     train_data, train_labels = get_images_and_labels_tensors(trainingdataf, traininglabelf)
@@ -122,6 +142,12 @@ def train(trainingdataf, traininglabelf, model, learning_rate):
 
 
 def generate_classification_report(test_labels, test_predictions):
+    """
+    Generates and prints classification report and other info.
+    :param test_labels: true labels
+    :param test_predictions: predicted labels
+    :return: nothing
+    """
     conf_matrix = confusion_matrix(test_labels, test_predictions)
     print("\nconf_matrix (%s): \n%s" % (len(conf_matrix), conf_matrix))
 
@@ -136,6 +162,13 @@ def generate_classification_report(test_labels, test_predictions):
 
 
 def validate(testdataf, testlabelf, model):
+    """
+    Macro validation phase to be reused with different models.
+    :param testdataf: test images filename
+    :param testlabelf: test labels filename
+    :param model: model to validate
+    :return: tensors for test images and labels data
+    """
     print("\n--------------- VALIDATION - --------------")
     # read test data
     test_data, test_labels = get_images_and_labels_tensors(testdataf, testlabelf)
@@ -144,7 +177,7 @@ def validate(testdataf, testlabelf, model):
     test_y_pred = model(test_data)
     test_predictions = test_y_pred.max(1).indices
 
-    #print("\ntest_y_pred (%s): %s ..." % (test_y_pred.size(), test_y_pred[:10, :]))
+    print("\ntest_y_pred (%s): %s ..." % (test_y_pred.size(), test_y_pred[:10, :]))
     print("\ntest_labels (%s): %s ..." % (len(test_labels), test_labels[:100]))
     print("test_predic (%s): %s ..." % (len(test_predictions), test_predictions[:100]))
 
@@ -154,6 +187,11 @@ def validate(testdataf, testlabelf, model):
 
 
 def analyze_weights(model):
+    """
+    Analyzes weights and prints relevant info.
+    :param model: model with the paramters to evaluate.
+    :return: nothing
+    """
     print("model: %s" % model)
     named_parameters = model.named_parameters()
     print("\nNAMED PARAMETERS: %s" % named_parameters)
@@ -169,18 +207,26 @@ def analyze_weights(model):
 
 def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
+    """
+    Main function.
+    :param trainingdataf: training images data filename
+    :param traininglabelf: training labels data filename
+    :param testdataf: testing images data filename
+    :param testlabelf: testing labels data filename
+    :return: nothing
+    """
 
     # we want to see tensor rows in a single line
     torch.set_printoptions(linewidth=300)
 
-    # --------------- TRAINING ---------------
+    # --------------- SIGMOID ---------------
     # NOTE FOR LAB: 50 neurons works the best. More than that doesn't really improve.
     # NOTE FOR LAB: 1e-3 works better than 1e-2 and 1e-2. 1e-4 can cause errors
     model = TwoLayerNN(28 * 28, 50, 10, nn.Sigmoid())
     train(trainingdataf, traininglabelf, model, 1e-3)
     validate(testdataf, testlabelf, model)
 
-    # --------------- TRAINING ---------------
+    # --------------- RELU ---------------
     model = TwoLayerNN(28 * 28, 50, 10, nn.ReLU())
     train(trainingdataf, traininglabelf, model, 1e-3)
     validate(testdataf, testlabelf, model)
