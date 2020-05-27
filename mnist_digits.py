@@ -11,7 +11,7 @@ from sklearn.metrics import classification_report
 # use None to process all images
 NUMBER_OF_IMAGES_TO_PROCESS = 500
 
-
+# --------------------------- LAB 3 ---------------------------------
 class TwoLayerNN(nn.Module):
     """
     Two Layer Neural Network.
@@ -131,8 +131,8 @@ def train(trainingdataf, traininglabelf, model, learning_rate):
     train_predictions = train_y_pred.max(1).indices
 
     # print sample image tensors data along with its label and the image itself
-    for i in range(3):
-        print_digit(train_data[i], train_labels[i])
+    #for i in range(3):
+    #    print_digit(train_data[i], train_labels[i])
 
     #print("\ntrain_y_pred (%s): %s ..." % (train_y_pred.size(), train_y_pred[:10, :]))
     print("\ntrain_labels (%s): %s ..." % (len(train_labels), train_labels[:100]))
@@ -204,7 +204,40 @@ def analyze_weights(model):
                 #print("\ndata(%s): %s" % (i, this_image_tensor.view(28, 28)))
                 lab3.show_image(this_image_tensor, "neuron_weight_images/{}.png".format(i), scale=lab3.SCALE_OFF)
 
+def lab3(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
+         testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
+    """
+    Lab3 function.
+    :param trainingdataf: training images data filename
+    :param traininglabelf: training labels data filename
+    :param testdataf: testing images data filename
+    :param testlabelf: testing labels data filename
+    :return: nothing
+    """
+    # we want to see tensor rows in a single line
+    torch.set_printoptions(linewidth=300)
 
+    # --- SIGMOID ---
+    # NOTE FOR LAB: 50 neurons works the best. More than that doesn't really improve.
+    # NOTE FOR LAB: 1e-3 works better than 1e-2 and 1e-2. 1e-4 can cause errors
+    model = TwoLayerNN(28 * 28, 50, 10, nn.Sigmoid())
+    train(trainingdataf, traininglabelf, model, 1e-3)
+    validate(testdataf, testlabelf, model)
+
+    # --- RELU ---
+    model = TwoLayerNN(28 * 28, 50, 10, nn.ReLU())
+    train(trainingdataf, traininglabelf, model, 1e-3)
+    validate(testdataf, testlabelf, model)
+
+    #analyze_weights(model)
+
+
+# --------------------------- LAB 4 ---------------------------------
+
+def lab4():
+    pass
+
+# --------------------------- MAIN ---------------------------------
 def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
     """
@@ -216,23 +249,7 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     :return: nothing
     """
 
-    # we want to see tensor rows in a single line
-    torch.set_printoptions(linewidth=300)
-
-    # --------------- SIGMOID ---------------
-    # NOTE FOR LAB: 50 neurons works the best. More than that doesn't really improve.
-    # NOTE FOR LAB: 1e-3 works better than 1e-2 and 1e-2. 1e-4 can cause errors
-    model = TwoLayerNN(28 * 28, 50, 10, nn.Sigmoid())
-    train(trainingdataf, traininglabelf, model, 1e-3)
-    validate(testdataf, testlabelf, model)
-
-    # --------------- RELU ---------------
-    model = TwoLayerNN(28 * 28, 50, 10, nn.ReLU())
-    train(trainingdataf, traininglabelf, model, 1e-3)
-    validate(testdataf, testlabelf, model)
-
-    analyze_weights(model)
-
+    lab3(trainingdataf, traininglabelf, testdataf, testlabelf)
 
 if __name__ == "__main__":
     main()
