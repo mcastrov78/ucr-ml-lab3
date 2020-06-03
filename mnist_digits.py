@@ -8,10 +8,15 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import classification_report
 
-# use None to process all images
-NUMBER_OF_IMAGES_TO_PROCESS = 500
+# use None to process all images (Lab3)
+NUMBER_OF_IMAGES_TO_PROCESS = 10000
+
+# chosen digit for GAN (Lab4)
+GAN_DIGIT = 6
 
 # --------------------------- LAB 3 ---------------------------------
+
+
 class TwoLayerNN(nn.Module):
     """
     Two Layer Neural Network.
@@ -44,7 +49,7 @@ class TwoLayerNN(nn.Module):
         return self.softmax(output_t)
 
 
-def train_nn(iterations, nn_model, optimizer, nn_loss_fn, tensor_x, tensor_y, input_n, output_n):
+def train_nn(iterations, nn_model, optimizer, nn_loss_fn, tensor_x, tensor_y, input_n):
     """
     Train Neural Network.
     :param iterations: epochs
@@ -118,7 +123,7 @@ def train(trainingdataf, traininglabelf, model, learning_rate):
     :param learning_rate: learning rate
     :return: tensors for training images and labels data
     """
-    print("\n--------------- TRAINING - --------------")
+    print("\n--------------- TRAINING ---------------")
     # read training data
     train_data, train_labels = get_images_and_labels_tensors(trainingdataf, traininglabelf)
 
@@ -126,7 +131,7 @@ def train(trainingdataf, traininglabelf, model, learning_rate):
     loss_fn = nn.CrossEntropyLoss()
     print("\nmodel: %s" % model)
 
-    train_nn(1000, model, optimizer, loss_fn, train_data, train_labels, 28 * 28, 10)
+    train_nn(1000, model, optimizer, loss_fn, train_data, train_labels, 28 * 28)
     train_y_pred = model(train_data)
     train_predictions = train_y_pred.max(1).indices
 
@@ -169,7 +174,7 @@ def validate(testdataf, testlabelf, model):
     :param model: model to validate
     :return: tensors for test images and labels data
     """
-    print("\n--------------- VALIDATION - --------------")
+    print("\n--------------- VALIDATION ---------------")
     # read test data
     test_data, test_labels = get_images_and_labels_tensors(testdataf, testlabelf)
 
@@ -204,7 +209,8 @@ def analyze_weights(model):
                 #print("\ndata(%s): %s" % (i, this_image_tensor.view(28, 28)))
                 lab3.show_image(this_image_tensor, "neuron_weight_images/{}.png".format(i), scale=lab3.SCALE_OFF)
 
-def lab3(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
+
+def lab_3_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
     """
     Lab3 function.
@@ -214,9 +220,6 @@ def lab3(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     :param testlabelf: testing labels data filename
     :return: nothing
     """
-    # we want to see tensor rows in a single line
-    torch.set_printoptions(linewidth=300)
-
     # --- SIGMOID ---
     # NOTE FOR LAB: 50 neurons works the best. More than that doesn't really improve.
     # NOTE FOR LAB: 1e-3 works better than 1e-2 and 1e-2. 1e-4 can cause errors
@@ -234,10 +237,165 @@ def lab3(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
 
 # --------------------------- LAB 4 ---------------------------------
 
-def lab4():
+class Discriminator(nn.Module):
+    """
+    Discriminator Neural Network.
+    """
+
+    def __init__(self, input_n, output_n, activation_fn):
+        """
+        Initialize Discriminator NN.
+        :param input_n: number of inputs
+        :param output_n: number of outputs
+        :param activation_fn: activation function for the hidden layer
+        """
+        super(Discriminator, self).__init__()
+        print("\n*** Discriminator i: %s - o: %s ***" % (input_n, output_n))
+
+        # input_n must be 784, output_n must be 1
+        self.hidden0 = nn.Sequential(
+            nn.Linear(input_n, 512),
+            activation_fn
+        )
+        self.hidden1 = nn.Sequential(
+            nn.Linear(512, 256),
+            activation_fn
+        )
+        self.hidden2 = nn.Sequential(
+            nn.Linear(256, 128),
+            activation_fn
+        )
+        self.out = nn.Sequential(
+            nn.Linear(128, output_n),
+            nn.Sigmoid()
+        )
+
+    def forward(self, input):
+        """
+        Pass the input through the NN layers.
+        :param input: input to the module
+        :return: output from the module
+        """
+        x = self.hidden0(input)
+        x = self.hidden1(x)
+        x = self.hidden2(x)
+        x = self.out(x)
+        return x
+
+class Generator(nn.Module):
+    """
+    Generator Neural Network.
+    """
+
+    def __init__(self, input_n, output_n, activation_fn):
+        """
+        Initialize Generator NN.
+        :param input_n: number of inputs
+        :param hidden_n: number of hidden neurons
+        :param output_n: number of outputs
+        :param activation_fn: activation function for the hidden layer
+        """
+        super(Generator, self).__init__()
+        print("\n*** Generator i: %s - o: %s ***" % (input_n, output_n))
+
+        # input_n must be 100, output_n must be 784
+        self.hidden0 = nn.Sequential(
+            nn.Linear(input_n, 128),
+            activation_fn
+        )
+        self.hidden1 = nn.Sequential(
+            nn.Linear(128, 256),
+            activation_fn
+        )
+        self.hidden2 = nn.Sequential(
+            nn.Linear(256, 512),
+            activation_fn
+        )
+        self.out = nn.Sequential(
+            nn.Linear(512, output_n),
+            nn.Sigmoid()
+        )
+
+    def forward(self, input):
+        """
+        Pass the input through the NN layers.
+        :param input: input to the module
+        :return: output from the module
+        """
+        x = self.hidden0(input)
+        x = self.hidden1(x)
+        x = self.hidden2(x)
+        x = self.out(x)
+        return x
+
+
+def get_real_images(digit, count, train_data, train_labels):
+    real_images = torch.zeros(count, 28*28)
+    index = 0
+    image_number = 0
+
+    while image_number < count:
+        if train_labels[index] == digit:
+            real_images[image_number] = train_data[index]
+            image_number += 1
+        index += 1
+
+    return real_images
+
+
+def train_discriminator(optimizer, loss_fn, discriminator, real_data, fake_data):
+    n = real_data.shape[0]
+
+    prediction_real = discriminator(real_data)
+    loss_output = loss_fn(prediction_real, torch.ones(n).view(-1, 1) * GAN_DIGIT)
+
+    optimizer.zero_grad()
+    loss_output.backward()
+    optimizer.step()
+
+    print("prediction_real(%s): %s... " % (prediction_real.shape, prediction_real[10]))
+    print("Loss: %f\t" % loss_output)
+
+
+def train_generator(optimizer, loss_fn, discriminator, generator):
     pass
 
+
+def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
+         testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
+    # read training data
+    train_data, train_labels = get_images_and_labels_tensors(trainingdataf, traininglabelf)
+    real_images = get_real_images(GAN_DIGIT, 100, train_data, train_labels)
+    fake_images = torch.randn(100, 100)
+
+    print("\nreal_images(%s): %s" % (real_images.size(), real_images))
+    print("\nfake_images(%s): %s" % (fake_images.size(), fake_images))
+
+    #for i in range(real_images.size()[0]):
+    #    lab3.show_image(real_images[i].view(28, 28), scale=lab3.SCALE_01)
+
+    discriminator = Discriminator(28*28, 1, nn.LeakyReLU())
+    d_optimizer = optim.Adam(discriminator.parameters(), lr=1e-4)
+    loss_fn = nn.BCELoss()
+    print("\ndiscriminator: %s" % discriminator)
+
+    generator = Generator(100, 28*28, nn.LeakyReLU())
+    g_optimizer = optim.Adam(discriminator.parameters(), lr=1e-4)
+    print("\ngenerator: %s" % generator)
+
+    for i in range(10):
+        print("i = %s" %i)
+        for j in range(100):
+            if j % 10 == 0:
+                print("j = %s" % j)
+            fake_data = generator(torch.randn(100, 100))
+            real_data = real_images
+            train_discriminator(d_optimizer, loss_fn, discriminator, real_data, fake_data)
+
+
 # --------------------------- MAIN ---------------------------------
+
+
 def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
     """
@@ -248,8 +406,12 @@ def main(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.i
     :param testlabelf: testing labels data filename
     :return: nothing
     """
+    # we want to see tensor rows in a single line
+    torch.set_printoptions(linewidth=300)
 
-    lab3(trainingdataf, traininglabelf, testdataf, testlabelf)
+    #lab_3_tasks(trainingdataf, traininglabelf, testdataf, testlabelf)
+    lab_4_tasks(trainingdataf, traininglabelf, testdataf, testlabelf)
+
 
 if __name__ == "__main__":
     main()
