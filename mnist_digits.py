@@ -25,6 +25,7 @@ class TwoLayerNN(nn.Module):
     def __init__(self, input_n, hidden_n, output_n, activation_fn):
         """
         Initialize TwoLayerNN.
+
         :param input_n: number of inputs
         :param hidden_n: number of hidden neurons
         :param output_n: number of outputs
@@ -40,6 +41,7 @@ class TwoLayerNN(nn.Module):
     def forward(self, input):
         """
         Pass the input through the NN layers.
+
         :param input: input to the module
         :return: output from the module
         """
@@ -52,6 +54,7 @@ class TwoLayerNN(nn.Module):
 def train_nn(iterations, nn_model, optimizer, nn_loss_fn, tensor_x, tensor_y, input_n):
     """
     Train Neural Network.
+
     :param iterations: epochs
     :param nn_model: NN model
     :param optimizer: optimizer
@@ -82,6 +85,7 @@ def train_nn(iterations, nn_model, optimizer, nn_loss_fn, tensor_x, tensor_y, in
 def get_images_and_labels_tensors(images_filename, labels_filename):
     """
     Creates tensors for images and labels data.
+
     :param images_filename: images filename
     :param labels_filename: labels filename
     :return: tensors for images and labels data
@@ -104,6 +108,7 @@ def get_images_and_labels_tensors(images_filename, labels_filename):
 def print_digit(image_tensor, label):
     """
     Prints the data in the image tensor and its label.
+
     :param image_tensor: image tensor
     :param label: true label
     :return: nothing
@@ -117,6 +122,7 @@ def print_digit(image_tensor, label):
 def train(trainingdataf, traininglabelf, model, learning_rate):
     """
     Macro training phase to be reused with different models and learning rates.
+
     :param trainingdataf: training images filename
     :param traininglabelf: training labels filename
     :param model: model to be trained
@@ -149,6 +155,7 @@ def train(trainingdataf, traininglabelf, model, learning_rate):
 def generate_classification_report(test_labels, test_predictions):
     """
     Generates and prints classification report and other info.
+
     :param test_labels: true labels
     :param test_predictions: predicted labels
     :return: nothing
@@ -169,6 +176,7 @@ def generate_classification_report(test_labels, test_predictions):
 def validate(testdataf, testlabelf, model):
     """
     Macro validation phase to be reused with different models.
+
     :param testdataf: test images filename
     :param testlabelf: test labels filename
     :param model: model to validate
@@ -194,6 +202,7 @@ def validate(testdataf, testlabelf, model):
 def analyze_weights(model):
     """
     Analyzes weights and prints relevant info.
+
     :param model: model with the paramters to evaluate.
     :return: nothing
     """
@@ -213,7 +222,8 @@ def analyze_weights(model):
 def lab_3_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
     """
-    Lab3 function.
+    Lab3 tasks.
+
     :param trainingdataf: training images data filename
     :param traininglabelf: training labels data filename
     :param testdataf: testing images data filename
@@ -245,12 +255,13 @@ class Discriminator(nn.Module):
     def __init__(self, input_n, output_n, activation_fn):
         """
         Initialize Discriminator NN.
+
         :param input_n: number of inputs
         :param output_n: number of outputs
         :param activation_fn: activation function for the hidden layer
         """
         super(Discriminator, self).__init__()
-        print("\n*** Discriminator i: %s - o: %s ***" % (input_n, output_n))
+        print("\n*** Discriminator i: %s - o: %s - activation: %s ***" % (input_n, output_n, activation_fn))
 
         # input_n must be 784, output_n must be 1
         self.hidden0 = nn.Sequential(
@@ -273,14 +284,16 @@ class Discriminator(nn.Module):
     def forward(self, input):
         """
         Pass the input through the NN layers.
+
         :param input: input to the module
         :return: output from the module
         """
-        x = self.hidden0(input)
-        x = self.hidden1(x)
-        x = self.hidden2(x)
-        x = self.out(x)
-        return x
+        output = self.hidden0(input)
+        output = self.hidden1(output)
+        output = self.hidden2(output)
+        output = self.out(output)
+        return output
+
 
 class Generator(nn.Module):
     """
@@ -290,13 +303,14 @@ class Generator(nn.Module):
     def __init__(self, input_n, output_n, activation_fn):
         """
         Initialize Generator NN.
+
         :param input_n: number of inputs
         :param hidden_n: number of hidden neurons
         :param output_n: number of outputs
         :param activation_fn: activation function for the hidden layer
         """
         super(Generator, self).__init__()
-        print("\n*** Generator i: %s - o: %s ***" % (input_n, output_n))
+        print("\n*** Generator i: %s - o: %s  - activation: %s ***" % (input_n, output_n, activation_fn))
 
         # input_n must be 100, output_n must be 784
         self.hidden0 = nn.Sequential(
@@ -319,14 +333,15 @@ class Generator(nn.Module):
     def forward(self, input):
         """
         Pass the input through the NN layers.
+
         :param input: input to the module
         :return: output from the module
         """
-        x = self.hidden0(input)
-        x = self.hidden1(x)
-        x = self.hidden2(x)
-        x = self.out(x)
-        return x
+        output = self.hidden0(input)
+        output = self.hidden1(output)
+        output = self.hidden2(output)
+        output = self.out(output)
+        return output
 
 
 def get_real_images(digit, count, train_data, train_labels):
@@ -344,17 +359,30 @@ def get_real_images(digit, count, train_data, train_labels):
 
 
 def train_discriminator(optimizer, loss_fn, discriminator, real_data, fake_data):
-    n = real_data.shape[0]
-
-    prediction_real = discriminator(real_data)
-    loss_output = loss_fn(prediction_real, torch.ones(n).view(-1, 1) * GAN_DIGIT)
-
+    print("\n--- Training Discriminator ---")
+    number_of_images = real_data.shape[0]
     optimizer.zero_grad()
-    loss_output.backward()
-    optimizer.step()
+
+    # running discriminator with real data should return 1 (true)
+    prediction_real = discriminator(real_data)
+    target = torch.ones(number_of_images).view(-1, 1)
+    loss_output_real = loss_fn(prediction_real, target)
+    loss_output_real.backward()
 
     print("prediction_real(%s): %s... " % (prediction_real.shape, prediction_real[10]))
-    print("Loss: %f\t" % loss_output)
+    print("Loss: %f\t" % loss_output_real)
+
+    # running discriminator with fake data should return 0 (false)
+    prediction_fake = discriminator(fake_data)
+    target = torch.zeros(number_of_images).view(-1, 1)
+    loss_output_fake = loss_fn(prediction_fake, target)
+    loss_output_fake.backward()
+
+    print("prediction_fake(%s): %s... " % (prediction_fake.shape, prediction_fake[10]))
+    print("Loss: %f\t" % loss_output_fake)
+
+    # optimize
+    optimizer.step()
 
 
 def train_generator(optimizer, loss_fn, discriminator, generator):
@@ -363,9 +391,19 @@ def train_generator(optimizer, loss_fn, discriminator, generator):
 
 def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
          testdataf="t10k-images.idx3-ubyte", testlabelf="t10k-labels.idx1-ubyte"):
+    """
+    Lab4 tasks.
+
+    :param trainingdataf: training images data filename
+    :param traininglabelf: training labels data filename
+    :param testdataf: testing images data filename
+    :param testlabelf: testing labels data filename
+    :return: nothing
+    """
     # read training data
     train_data, train_labels = get_images_and_labels_tensors(trainingdataf, traininglabelf)
     real_images = get_real_images(GAN_DIGIT, 100, train_data, train_labels)
+    # TODO: should we normalize this for Sigmoid and Tanh?
     fake_images = torch.randn(100, 100)
 
     print("\nreal_images(%s): %s" % (real_images.size(), real_images))
@@ -380,16 +418,17 @@ def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-l
     print("\ndiscriminator: %s" % discriminator)
 
     generator = Generator(100, 28*28, nn.LeakyReLU())
-    g_optimizer = optim.Adam(discriminator.parameters(), lr=1e-4)
+    g_optimizer = optim.Adam(generator.parameters(), lr=1e-4)
     print("\ngenerator: %s" % generator)
 
+    print("\n*** TRAINING LOOP ***")
     for i in range(10):
         print("i = %s" %i)
         for j in range(100):
             if j % 10 == 0:
                 print("j = %s" % j)
-            fake_data = generator(torch.randn(100, 100))
             real_data = real_images
+            fake_data = generator(torch.randn(100, 100))
             train_discriminator(d_optimizer, loss_fn, discriminator, real_data, fake_data)
 
 
