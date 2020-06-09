@@ -359,7 +359,6 @@ def get_real_images(digit, count, train_data, train_labels):
 
 
 def train_discriminator(optimizer, loss_fn, discriminator, real_data, fake_data):
-    print("\n--- Training Discriminator ---")
     number_of_images = real_data.shape[0]
     optimizer.zero_grad()
 
@@ -368,25 +367,38 @@ def train_discriminator(optimizer, loss_fn, discriminator, real_data, fake_data)
     target = torch.ones(number_of_images).view(-1, 1)
     loss_output_real = loss_fn(prediction_real, target)
     loss_output_real.backward()
-
-    print("prediction_real(%s): %s... " % (prediction_real.shape, prediction_real[10]))
-    print("Loss: %f\t" % loss_output_real)
+    #print("prediction_real(%s): %s... " % (prediction_real.shape, prediction_real[10]))
 
     # running discriminator with fake data should return 0 (false)
     prediction_fake = discriminator(fake_data)
     target = torch.zeros(number_of_images).view(-1, 1)
     loss_output_fake = loss_fn(prediction_fake, target)
     loss_output_fake.backward()
-
-    print("prediction_fake(%s): %s... " % (prediction_fake.shape, prediction_fake[10]))
-    print("Loss: %f\t" % loss_output_fake)
+    #print("prediction_fake(%s): %s... " % (prediction_fake.shape, prediction_fake[10]))
 
     # optimize
     optimizer.step()
 
+    print("D Loss (%f + %f): %f" % (loss_output_real, loss_output_fake, loss_output_real + loss_output_fake))
+
 
 def train_generator(optimizer, loss_fn, discriminator, generator):
-    pass
+    noise = torch.randn(100, 100)
+    number_of_images = noise.shape[0]
+    optimizer.zero_grad()
+
+    # running discriminator with real data should return 1 (true)
+    fake_images = generator(noise);
+    prediction = discriminator(fake_images)
+    target = torch.ones(number_of_images).view(-1, 1)
+    loss_output = loss_fn(prediction, target)
+    loss_output.backward()
+    #print("prediction(%s): %s... " % (prediction.shape, prediction[10]))
+
+    # optimize
+    optimizer.step()
+
+    print("G Loss: %f" % loss_output)
 
 
 def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
@@ -422,15 +434,22 @@ def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-l
     print("\ngenerator: %s" % generator)
 
     print("\n*** TRAINING LOOP ***")
-    for i in range(10):
-        print("i = %s" %i)
-        for j in range(100):
+
+    for i in range(1, 11):
+        print("\n- i = %s -" %i)
+        print("--- TRAINING DISCRIMINATOR --- ")
+        for j in range(1, 21):
             if j % 10 == 0:
-                print("j = %s" % j)
+                print("- j DIS = %s -" % j)
             real_data = real_images
             fake_data = generator(torch.randn(100, 100))
             train_discriminator(d_optimizer, loss_fn, discriminator, real_data, fake_data)
 
+        print("--- TRAINING GENERATOR --- ")
+        for j in range(1, 21):
+            if j % 10 == 0:
+                print("- j GEN = %s -" % j)
+            train_generator(g_optimizer, loss_fn, discriminator, generator)
 
 # --------------------------- MAIN ---------------------------------
 
