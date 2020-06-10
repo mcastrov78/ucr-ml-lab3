@@ -7,6 +7,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import classification_report
+import random
 
 # use None to process all images (Lab3)
 NUMBER_OF_IMAGES_TO_PROCESS = 10000
@@ -383,12 +384,12 @@ def train_discriminator(optimizer, loss_fn, discriminator, real_data, fake_data)
 
 
 def train_generator(optimizer, loss_fn, discriminator, generator):
-    noise = torch.randn(100, 100)
+    noise = torch.randn(100, 100).detach()
     number_of_images = noise.shape[0]
     optimizer.zero_grad()
 
     # running discriminator with real data should return 1 (true)
-    fake_images = generator(noise);
+    fake_images = generator(noise)
     prediction = discriminator(fake_images)
     target = torch.ones(number_of_images).view(-1, 1)
     loss_output = loss_fn(prediction, target)
@@ -435,14 +436,14 @@ def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-l
 
     print("\n*** TRAINING LOOP ***")
 
-    for i in range(1, 11):
+    for i in range(1, 21):
         print("\n- i = %s -" %i)
         print("--- TRAINING DISCRIMINATOR --- ")
         for j in range(1, 21):
             if j % 10 == 0:
                 print("- j DIS = %s -" % j)
             real_data = real_images
-            fake_data = generator(torch.randn(100, 100))
+            fake_data = generator(torch.randn(100, 100)).detach()
             train_discriminator(d_optimizer, loss_fn, discriminator, real_data, fake_data)
 
         print("--- TRAINING GENERATOR --- ")
@@ -450,6 +451,13 @@ def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-l
             if j % 10 == 0:
                 print("- j GEN = %s -" % j)
             train_generator(g_optimizer, loss_fn, discriminator, generator)
+
+        # Sample some fake images at random
+        fake_data = generator(torch.randn(100, 100)).detach()
+        for j in range(fake_data.shape[0]):
+            if random.random() < 0.1:
+                lab3.show_image(fake_data[j], 'gen_samples/img_%d_%d.png' % (i, j), scale=lab3.SCALE_01)
+
 
 # --------------------------- MAIN ---------------------------------
 
