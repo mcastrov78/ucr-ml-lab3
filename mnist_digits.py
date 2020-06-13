@@ -10,10 +10,10 @@ from sklearn.metrics import classification_report
 import random
 
 # use None to process all images (Lab3)
-NUMBER_OF_IMAGES_TO_PROCESS = 10000
+NUMBER_OF_IMAGES_TO_PROCESS = None
 
 # chosen digit for GAN (Lab4)
-GAN_DIGIT = 6
+GAN_DIGIT = 4
 
 # --------------------------- LAB 3 ---------------------------------
 
@@ -346,6 +346,15 @@ class Generator(nn.Module):
 
 
 def get_real_images(digit, count, train_data, train_labels):
+    """
+    Get real images from the MNIST dataset.
+
+    :param digit: unique digit we are looking for
+    :param count: number of images we are looking for
+    :param train_data: train data
+    :param train_labels: labels for the train data
+    :return: tensor with "count" images if "digit"
+    """
     real_images = torch.zeros(count, 28*28)
     index = 0
     image_number = 0
@@ -359,7 +368,29 @@ def get_real_images(digit, count, train_data, train_labels):
     return real_images
 
 
+def sample_real_images(real_images, count):
+    """
+    Returns "count" random images from real_images.
+
+    :param real_images: tensor with real images
+    :param count: number of samples required
+    :return: a tensor with "count" random images from real_images.
+    """
+    random_samples_indices = torch.randperm(real_images.shape[0])
+    return real_images[random_samples_indices[:count]]
+
+
 def train_discriminator(optimizer, loss_fn, discriminator, real_data, fake_data):
+    """
+    Discriminator training.
+
+    :param optimizer: optimizer for the NN
+    :param loss_fn: loss function for the NN
+    :param discriminator: discriminator to train
+    :param real_data: real images data
+    :param fake_data: fake images data
+    :return: sum of losses for training with both, real and fake images
+    """
     number_of_images = real_data.shape[0]
     optimizer.zero_grad()
 
@@ -381,9 +412,19 @@ def train_discriminator(optimizer, loss_fn, discriminator, real_data, fake_data)
     optimizer.step()
 
     print("D Loss (%f + %f): %f" % (loss_output_real, loss_output_fake, loss_output_real + loss_output_fake))
+    return loss_output_real + loss_output_fake
 
 
 def train_generator(optimizer, loss_fn, discriminator, generator):
+    """
+    Generator training.
+
+    :param optimizer: optmizer for the NN
+    :param loss_fn: loss function for the NN
+    :param discriminator: discriminator for training the generator
+    :param generator: generator to train
+    :return: loss for the generator training
+    """
     noise = torch.randn(100, 100).detach()
     number_of_images = noise.shape[0]
     optimizer.zero_grad()
@@ -400,6 +441,7 @@ def train_generator(optimizer, loss_fn, discriminator, generator):
     optimizer.step()
 
     print("G Loss: %f" % loss_output)
+    return loss_output
 
 
 def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-labels.idx1-ubyte",
@@ -415,15 +457,11 @@ def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-l
     """
     # read training data
     train_data, train_labels = get_images_and_labels_tensors(trainingdataf, traininglabelf)
-    real_images = get_real_images(GAN_DIGIT, 100, train_data, train_labels)
-    # TODO: should we normalize this for Sigmoid and Tanh?
-    fake_images = torch.randn(100, 100)
+    print("\ntrain_data(%s)" % train_data.shape[0])
+    print("train_labels(%s)" % train_labels.shape[0])
+    real_images = get_real_images(GAN_DIGIT, 1000, train_data, train_labels)
 
     print("\nreal_images(%s): %s" % (real_images.size(), real_images))
-    print("\nfake_images(%s): %s" % (fake_images.size(), fake_images))
-
-    #for i in range(real_images.size()[0]):
-    #    lab3.show_image(real_images[i].view(28, 28), scale=lab3.SCALE_01)
 
     discriminator = Discriminator(28*28, 1, nn.LeakyReLU())
     d_optimizer = optim.Adam(discriminator.parameters(), lr=1e-4)
@@ -434,20 +472,42 @@ def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-l
     g_optimizer = optim.Adam(generator.parameters(), lr=1e-4)
     print("\ngenerator: %s" % generator)
 
-    print("\n*** TRAINING LOOP ***")
+    outer_loop_number = 100      # iterations for outer loop - 100
+    inner_loop_number = 400     # iterations for inner loop - 400
+    old_images_to_keep = inner_loop_number // 4  # keep 25% of current iteration images in memory for next iteration
 
-    for i in range(1, 21):
-        print("\n- i = %s -" %i)
+    # buffer to store all fake images used in current iteration
+    fake_images_curr_it = torch.zeros((inner_loop_number, 100, 28*28))
+    # fake images memory to keep 25% of images used this iteration for the next one
+    fake_images_memory = torch.zeros((old_images_to_keep, 100, 28 * 28))
+
+    print("\n*** TRAINING LOOP ***")
+    for i in range(0, outer_loop_number):
+        print("\n--- i = %s ---" % i)
+
         print("--- TRAINING DISCRIMINATOR --- ")
-        for j in range(1, 21):
+        for j in range(0, inner_loop_number):
             if j % 10 == 0:
                 print("- j DIS = %s -" % j)
-            real_data = real_images
-            fake_data = generator(torch.randn(100, 100)).detach()
-            train_discriminator(d_optimizer, loss_fn, discriminator, real_data, fake_data)
+
+            if i > 0 and j < old_images_to_keep:
+                # if outer loop iteration is not the first one and inner loop iteration is less than memory size
+                fake_data = fake_images_memory[j]
+            else:
+                # otherwise, generate new random images
+                fake_data = generator(torch.randn(100, 100)).detach()
+
+            # store all images used current epoch
+            fake_images_curr_it[j] = fake_data
+            # train discriminator with fake data and sample real images
+            train_discriminator(d_optimizer, loss_fn, discriminator, sample_real_images(real_images, 100), fake_data)
+
+        # get old_images_to_keep number of images from current iteration and use them as memory for next cycle
+        fake_images_randperm = torch.randperm(inner_loop_number)[:old_images_to_keep]
+        fake_images_memory = fake_images_curr_it[fake_images_randperm]
 
         print("--- TRAINING GENERATOR --- ")
-        for j in range(1, 21):
+        for j in range(0, inner_loop_number):
             if j % 10 == 0:
                 print("- j GEN = %s -" % j)
             train_generator(g_optimizer, loss_fn, discriminator, generator)
