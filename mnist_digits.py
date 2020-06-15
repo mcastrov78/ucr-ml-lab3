@@ -13,7 +13,7 @@ import random
 NUMBER_OF_IMAGES_TO_PROCESS = None
 
 # chosen digit for GAN (Lab4)
-GAN_DIGIT = 4
+GAN_DIGIT = 6
 
 # --------------------------- LAB 3 ---------------------------------
 
@@ -464,12 +464,12 @@ def lab_4_tasks(trainingdataf="train-images.idx3-ubyte", traininglabelf="train-l
     print("\nreal_images(%s): %s" % (real_images.size(), real_images))
 
     discriminator = Discriminator(28*28, 1, nn.LeakyReLU())
-    d_optimizer = optim.Adam(discriminator.parameters(), lr=1e-4)
+    d_optimizer = optim.Adam(discriminator.parameters(), lr=1e-5)
     loss_fn = nn.BCELoss()
     print("\ndiscriminator: %s" % discriminator)
 
     generator = Generator(100, 28*28, nn.LeakyReLU())
-    g_optimizer = optim.Adam(generator.parameters(), lr=1e-4)
+    g_optimizer = optim.Adam(generator.parameters(), lr=1e-5)
     print("\ngenerator: %s" % generator)
 
     outer_loop_number = 100      # iterations for outer loop - 100
